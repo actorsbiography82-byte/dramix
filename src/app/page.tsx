@@ -12,7 +12,10 @@ interface WordPressEpisode {
 
 async function getEpisodes(): Promise<WordPressEpisode[]> {
   try {
-    const url = `${process.env.NEXT_PUBLIC_PANTHEON_WP_URL}/wp-json/wp/v2/episodes?_embed`;
+    // Fallback URL add kiya hai agar env variable load na ho
+    const baseUrl = process.env.NEXT_PUBLIC_PANTHEON_WP_URL || "https://dev-dramix.pantheonsite.io";
+    const url = `${baseUrl}/wp-json/wp/v2/episodes?_embed`;
+
     const res = await fetch(url, { next: { revalidate: 30 } });
 
     if (!res.ok) {
