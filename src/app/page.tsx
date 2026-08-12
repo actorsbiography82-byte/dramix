@@ -1,4 +1,7 @@
 import styles from "./page.module.css";
+import HeroBanner from "../components/HeroBanner";
+import TrendingSlider from "../components/TrendingSlider";
+import UpcomingReleases from "../components/UpcomingReleases";
 
 interface WordPressEpisode {
   id: number;
@@ -34,15 +37,11 @@ export default async function Home() {
 
   return (
     <main className={styles.container}>
-      {/* Header */}
-      <header className={styles.header}>
-        <h1 className={styles.logo}>
-          DRAMIX
-        </h1>
-        <p className={styles.subtitle}>
-          Watch Latest Drama Series & Episodes
-        </p>
-      </header>
+      {/* Hero Banner */}
+      <HeroBanner />
+
+      {/* Trending / Top Rated Slider */}
+      <TrendingSlider />
 
       {/* Episodes Grid */}
       <div className={styles.grid}>
@@ -73,6 +72,9 @@ export default async function Home() {
           ))
         )}
       </div>
+
+      {/* Upcoming Releases */}
+      <UpcomingReleases />
     </main>
   );
 }
