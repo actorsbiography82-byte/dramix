@@ -15,8 +15,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body style={{ margin: 0, padding: 0, backgroundColor: "#f8fafc", color: "#0f172a" }}>
+        {/* Header across all pages */}
         <Header />
+        
+        {/* Page Content */}
         {children}
+        
+        {/* Footer across all pages */}
         <Footer />
       </body>
     </html>
