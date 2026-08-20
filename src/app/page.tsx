@@ -1,10 +1,11 @@
 import styles from "./page.module.css";
-import Header from "../components/Header";
 import Footer from "../components/Footer";
+import Link from "next/link";
 
 interface WordPressEpisode {
   id: number;
   date: string;
+  slug: string;
   title: {
     rendered: string;
   };
@@ -18,8 +19,6 @@ interface WordPressEpisode {
   };
 }
 
-// Optional Adsterra Codes (When you have scripts, paste them inside quotes)
-const TOP_AD_CODE = ""; // Paste Adsterra Header Banner Script Here
 const NATIVE_AD_CODE = ""; // Paste Adsterra Native Grid Ad Script Here
 const FOOTER_AD_CODE = ""; // Paste Adsterra Footer Banner Script Here
 
@@ -41,8 +40,6 @@ export default async function Home() {
 
   return (
     <div className={styles.pageWrapper}>
-      <Header adCode728x90={TOP_AD_CODE} />
-
       <main className={styles.container}>
         {/* Main Section Heading */}
         <section className={styles.heroSection}>
@@ -61,7 +58,7 @@ export default async function Home() {
 
                 return (
                   <div key={episode.id} className={styles.cardGroup}>
-                    {/* IN-GRID ADSTERRA NATIVE AD SLOT (Appears after 2nd Card) */}
+                    {/* IN-GRID ADSTERRA NATIVE AD SLOT */}
                     {index === 2 && NATIVE_AD_CODE && (
                       <article className={`${styles.card} ${styles.adCard}`}>
                         <div className={styles.adLabel}>ADVERTISEMENT / ADSTERRA NATIVE AD</div>
@@ -70,26 +67,28 @@ export default async function Home() {
                     )}
 
                     {/* Standard Episode Card */}
-                    <article className={styles.card}>
-                      <div className={styles.thumbnailWrapper}>
-                        {featuredImg ? (
-                          <img src={featuredImg} alt={episode.title.rendered} className={styles.thumbnail} />
-                        ) : (
-                          <div className={styles.placeholderImg}>DRAMIX HD</div>
-                        )}
-                        <span className={styles.badge}>NEW</span>
-                      </div>
+                    <Link href={`/episode/${episode.id}`} className={styles.cardLink}>
+                      <article className={styles.card}>
+                        <div className={styles.thumbnailWrapper}>
+                          {featuredImg ? (
+                            <img src={featuredImg} alt={episode.title.rendered} className={styles.thumbnail} />
+                          ) : (
+                            <div className={styles.placeholderImg}>DRAMIX HD</div>
+                          )}
+                          <span className={styles.badge}>NEW</span>
+                        </div>
 
-                      <div className={styles.cardContent}>
-                        <h2
-                          className={styles.cardTitle}
-                          dangerouslySetInnerHTML={{ __html: episode.title.rendered }}
-                        />
-                        <span className={styles.date}>
-                          {new Date(episode.date).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </article>
+                        <div className={styles.cardContent}>
+                          <h2
+                            className={styles.cardTitle}
+                            dangerouslySetInnerHTML={{ __html: episode.title.rendered }}
+                          />
+                          <span className={styles.date}>
+                            {new Date(episode.date).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </article>
+                    </Link>
                   </div>
                 );
               })

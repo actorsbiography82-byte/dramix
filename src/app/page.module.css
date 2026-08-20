@@ -122,3 +122,8 @@
   margin-bottom: 6px;
   text-align: center;
 }
+.cardLink {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
