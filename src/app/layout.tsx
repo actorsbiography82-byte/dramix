@@ -1,28 +1,23 @@
-import type { Metadata } from "next";
-import { Outfit } from "next/font/google";
 import "./globals.css";
 import Header from "../components/Header";
-import Footer from "../components/Footer";
 
-const outfit = Outfit({
-  variable: "--font-outfit",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: "DRAMIX - Watch Latest Drama Series & Episodes",
-  description: "Stream the latest high-quality drama series and episodes on DRAMIX. Enjoy a premium, seamless video player experience.",
+export const metadata = {
+  title: "DRAMIX - Watch Latest Drama Series",
+  description: "Watch latest Pakistani, Turkish, Indian, and Korean drama series in HD.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="en" className={outfit.variable}>
-      <body>
+    <html lang="en">
+      <body style={{ margin: 0, padding: 0, backgroundColor: "#f8fafc" }}>
+        {/* Only Global Header Here */}
         <Header />
         {children}
-        <Footer />
       </body>
     </html>
   );
 }
-
