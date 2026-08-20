@@ -1,117 +1,124 @@
-.container {
+.pageWrapper {
+  background-color: #f8fafc;
   min-height: 100vh;
-  background: radial-gradient(circle at top, #0f172a 0%, #020617 100%);
-  padding: 2rem 1.5rem;
+  color: #0f172a;
+  font-family: system-ui, -apple-system, sans-serif;
 }
 
-@media (min-width: 768px) {
-  .container {
-    padding: 3rem 3rem;
-  }
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 30px 20px;
+}
+
+.heroSection {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.mainTitle {
+  font-size: 32px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.subTitle {
+  color: #64748b;
+  font-size: 16px;
 }
 
 .grid {
-  max-width: 1200px;
-  margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 2.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 24px;
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.thumbnailWrapper {
+  position: relative;
+  width: 100%;
+  height: 160px;
+  background-color: #cbd5e1;
+}
+
+.thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.placeholderImg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: #e2e8f0;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: #e50914;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.cardContent {
+  padding: 16px;
+}
+
+.cardTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.date {
+  font-size: 12px;
+  color: #94a3b8;
 }
 
 .empty {
   grid-column: 1 / -1;
   text-align: center;
-  padding: 6rem 2rem;
+  padding: 60px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px dashed #cbd5e1;
   color: #64748b;
-  font-size: 1.1rem;
-  background: rgba(15, 23, 42, 0.2);
-  border-radius: 1.25rem;
-  border: 1px dashed rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(8px);
 }
 
-.card {
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 1.25rem;
-  overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
-  display: flex;
-  flex-direction: column;
+.adCard {
+  border: 1px dashed #e50914;
+  padding: 10px;
 }
 
-.card:hover {
-  transform: translateY(-6px);
-  border-color: rgba(239, 68, 68, 0.4);
-  box-shadow: 0 12px 30px rgba(239, 68, 68, 0.12), 0 0 0 1px rgba(239, 68, 68, 0.1);
-}
-
-.videoWrapper {
-  aspect-ratio: 16 / 9;
-  width: 100%;
-  background: #000;
-  overflow: hidden;
-  position: relative;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-.videoWrapper :global(iframe) {
-  width: 100%;
-  height: 100%;
-  border: 0;
-}
-
-.videoWrapper :global(figure) {
-  margin: 0;
-  height: 100%;
-}
-
-.cardContent {
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
-}
-
-.cardTitle {
-  font-size: 1.2rem;
+.adLabel {
+  font-size: 10px;
+  color: #e50914;
   font-weight: 700;
-  color: #f1f5f9;
-  line-height: 1.45;
-  transition: color 0.3s ease;
-  margin-bottom: auto;
-}
-
-.card:hover .cardTitle {
-  color: #ffffff;
-}
-
-.badge {
-  display: inline-block;
-  align-self: flex-start;
-  margin-top: 1.25rem;
-  padding: 0.35rem 0.85rem;
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  color: #f87171;
-  border-radius: 9999px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  animation: pulseGlow 2s infinite alternate;
-}
-
-@keyframes pulseGlow {
-  0% {
-    box-shadow: 0 0 4px rgba(239, 68, 68, 0.1);
-    border-color: rgba(239, 68, 68, 0.15);
-  }
-  100% {
-    box-shadow: 0 0 12px rgba(239, 68, 68, 0.25);
-    border-color: rgba(239, 68, 68, 0.45);
-  }
+  margin-bottom: 6px;
+  text-align: center;
 }

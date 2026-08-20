@@ -1,30 +1,34 @@
 import styles from "./page.module.css";
-import HeroBanner from "../components/HeroBanner";
-import TrendingSlider from "../components/TrendingSlider";
-import UpcomingReleases from "../components/UpcomingReleases";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
 
 interface WordPressEpisode {
   id: number;
+  date: string;
   title: {
     rendered: string;
   };
   content: {
     rendered: string;
   };
+  _embedded?: {
+    'wp:featuredmedia'?: Array<{
+      source_url: string;
+    }>;
+  };
 }
+
+// Optional Adsterra Codes (When you have scripts, paste them inside quotes)
+const TOP_AD_CODE = ""; // Paste Adsterra Header Banner Script Here
+const NATIVE_AD_CODE = ""; // Paste Adsterra Native Grid Ad Script Here
+const FOOTER_AD_CODE = ""; // Paste Adsterra Footer Banner Script Here
 
 async function getEpisodes(): Promise<WordPressEpisode[]> {
   try {
-    // Fallback URL add kiya hai agar env variable load na ho
-    const baseUrl = process.env.NEXT_PUBLIC_PANTHEON_WP_URL || "https://dev-dramix.pantheonsite.io";
-    const url = `${baseUrl}/wp-json/wp/v2/episodes?_embed`;
+    const baseUrl = process.env.PANTHEON_WP_URL || process.env.NEXT_PUBLIC_PANTHEON_WP_URL || "https://dev-dramix.pantheonsite.io";
+    const res = await fetch(`${baseUrl}/wp-json/wp/v2/episodes?_embed`, { next: { revalidate: 30 } });
 
-    const res = await fetch(url, { next: { revalidate: 30 } });
-
-    if (!res.ok) {
-      console.error(`Failed to fetch episodes from ${url}. Status: ${res.status}`);
-      return [];
-    }
+    if (!res.ok) return [];
     return await res.json();
   } catch (error) {
     console.error("Error fetching episodes:", error);
@@ -36,45 +40,65 @@ export default async function Home() {
   const episodes = await getEpisodes();
 
   return (
-    <main className={styles.container}>
-      {/* Hero Banner */}
-      <HeroBanner />
+    <div className={styles.pageWrapper}>
+      <Header adCode728x90={TOP_AD_CODE} />
 
-      {/* Trending / Top Rated Slider */}
-      <TrendingSlider />
+      <main className={styles.container}>
+        {/* Main Section Heading */}
+        <section className={styles.heroSection}>
+          <h1 className={styles.mainTitle}>Watch Latest Drama Episodes</h1>
+          <p className={styles.subTitle}>Stream high quality episodes updated daily</p>
+        </section>
 
-      {/* Episodes Grid */}
-      <div className={styles.grid}>
-        {episodes.length === 0 ? (
-          <div className={styles.empty}>
-            No episodes found.
+        {/* Episodes Grid */}
+        <section className={styles.gridSection}>
+          <div className={styles.grid}>
+            {episodes.length === 0 ? (
+              <div className={styles.empty}>No episodes found. Please add posts in WordPress.</div>
+            ) : (
+              episodes.map((episode, index) => {
+                const featuredImg = episode._embedded?.['wp:featuredmedia']?.[0]?.source_url;
+
+                return (
+                  <div key={episode.id} className={styles.cardGroup}>
+                    {/* IN-GRID ADSTERRA NATIVE AD SLOT (Appears after 2nd Card) */}
+                    {index === 2 && NATIVE_AD_CODE && (
+                      <article className={`${styles.card} ${styles.adCard}`}>
+                        <div className={styles.adLabel}>ADVERTISEMENT / ADSTERRA NATIVE AD</div>
+                        <div dangerouslySetInnerHTML={{ __html: NATIVE_AD_CODE }} />
+                      </article>
+                    )}
+
+                    {/* Standard Episode Card */}
+                    <article className={styles.card}>
+                      <div className={styles.thumbnailWrapper}>
+                        {featuredImg ? (
+                          <img src={featuredImg} alt={episode.title.rendered} className={styles.thumbnail} />
+                        ) : (
+                          <div className={styles.placeholderImg}>DRAMIX HD</div>
+                        )}
+                        <span className={styles.badge}>NEW</span>
+                      </div>
+
+                      <div className={styles.cardContent}>
+                        <h2
+                          className={styles.cardTitle}
+                          dangerouslySetInnerHTML={{ __html: episode.title.rendered }}
+                        />
+                        <span className={styles.date}>
+                          {new Date(episode.date).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </article>
+                  </div>
+                );
+              })
+            )}
           </div>
-        ) : (
-          episodes.map((episode) => (
-            <article key={episode.id} className={styles.card}>
-              {/* Video Player Box */}
-              <div
-                className={styles.videoWrapper}
-                dangerouslySetInnerHTML={{ __html: episode.content.rendered }}
-              />
+        </section>
+      </main>
 
-              {/* Title & Info */}
-              <div className={styles.cardContent}>
-                <h2
-                  className={styles.cardTitle}
-                  dangerouslySetInnerHTML={{ __html: episode.title.rendered }}
-                />
-                <span className={styles.badge}>
-                  New Episode
-                </span>
-              </div>
-            </article>
-          ))
-        )}
-      </div>
-
-      {/* Upcoming Releases */}
-      <UpcomingReleases />
-    </main>
+      <Footer adCodeFooter728x90={FOOTER_AD_CODE} />
+    </div>
   );
 }
