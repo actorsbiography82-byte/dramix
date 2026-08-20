@@ -12,7 +12,12 @@ interface WordPressEpisode {
 async function getSingleEpisode(id: string): Promise<WordPressEpisode | null> {
   try {
     const baseUrl = process.env.PANTHEON_WP_URL || process.env.NEXT_PUBLIC_PANTHEON_WP_URL || "https://dev-dramix.pantheonsite.io";
-    const res = await fetch(`${baseUrl}/wp-json/wp/v2/episodes/${id}?_embed`, { next: { revalidate: 30 } });
+    
+    // Cache disable kar ke timestamp pass kar di hai taake direct fresh data aaye
+    const res = await fetch(`${baseUrl}/wp-json/wp/v2/episodes/${id}?_embed&timestamp=${Date.now()}`, { 
+      cache: 'no-store',
+      next: { revalidate: 0 } 
+    });
 
     if (!res.ok) return null;
     return await res.json();

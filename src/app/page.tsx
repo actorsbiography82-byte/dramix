@@ -23,7 +23,12 @@ const NATIVE_AD_CODE = ""; // Paste Adsterra Native Grid Ad Script Here
 async function getEpisodes(): Promise<WordPressEpisode[]> {
   try {
     const baseUrl = process.env.PANTHEON_WP_URL || process.env.NEXT_PUBLIC_PANTHEON_WP_URL || "https://dev-dramix.pantheonsite.io";
-    const res = await fetch(`${baseUrl}/wp-json/wp/v2/episodes?_embed`, { next: { revalidate: 30 } });
+    
+    // Cache disable kar ke dynamic timestamp add kar diya hai taake post publish hote hi instant dikhe
+    const res = await fetch(`${baseUrl}/wp-json/wp/v2/episodes?_embed&timestamp=${Date.now()}`, {
+      cache: 'no-store',
+      next: { revalidate: 0 }
+    });
 
     if (!res.ok) return [];
     return await res.json();
