@@ -1,5 +1,4 @@
 import styles from "./page.module.css";
-import Footer from "../components/Footer";
 import Link from "next/link";
 
 interface WordPressEpisode {
@@ -20,7 +19,6 @@ interface WordPressEpisode {
 }
 
 const NATIVE_AD_CODE = ""; // Paste Adsterra Native Grid Ad Script Here
-const FOOTER_AD_CODE = ""; // Paste Adsterra Footer Banner Script Here
 
 async function getEpisodes(): Promise<WordPressEpisode[]> {
   try {
@@ -66,8 +64,8 @@ export default async function Home() {
                       </article>
                     )}
 
-                    {/* Standard Episode Card */}
-                    <Link href={`/episode/${episode.id}`} className={styles.cardLink}>
+                    {/* Updated Link to /watch/ */}
+                    <Link href={`/watch/${episode.id}`} className={styles.cardLink}>
                       <article className={styles.card}>
                         <div className={styles.thumbnailWrapper}>
                           {featuredImg ? (
@@ -96,8 +94,6 @@ export default async function Home() {
           </div>
         </section>
       </main>
-
-      <Footer adCodeFooter728x90={FOOTER_AD_CODE} />
     </div>
   );
 }
