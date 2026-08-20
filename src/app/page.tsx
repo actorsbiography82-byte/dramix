@@ -24,10 +24,9 @@ async function getEpisodes(): Promise<WordPressEpisode[]> {
   try {
     const baseUrl = process.env.PANTHEON_WP_URL || process.env.NEXT_PUBLIC_PANTHEON_WP_URL || "https://dev-dramix.pantheonsite.io";
     
-    // Cache disable kar ke dynamic timestamp add kar diya hai taake post publish hote hi instant dikhe
-    const res = await fetch(`${baseUrl}/wp-json/wp/v2/episodes?_embed&timestamp=${Date.now()}`, {
-      cache: 'no-store',
-      next: { revalidate: 0 }
+    // Clean fetch query without extra timestamp parameters
+    const res = await fetch(`${baseUrl}/wp-json/wp/v2/episodes?_embed`, {
+      cache: 'no-store'
     });
 
     if (!res.ok) return [];
@@ -44,24 +43,21 @@ export default async function Home() {
   return (
     <div className={styles.pageWrapper}>
       <main className={styles.container}>
-        {/* Main Section Heading */}
         <section className={styles.heroSection}>
           <h1 className={styles.mainTitle}>Watch Latest Drama Episodes</h1>
           <p className={styles.subTitle}>Stream high quality episodes updated daily</p>
         </section>
 
-        {/* Episodes Grid */}
         <section className={styles.gridSection}>
           <div className={styles.grid}>
             {episodes.length === 0 ? (
-              <div className={styles.empty}>No episodes found. Please add posts in WordPress.</div>
+              <div className={styles.empty}>No episodes found. Please check WordPress posts.</div>
             ) : (
               episodes.map((episode, index) => {
                 const featuredImg = episode._embedded?.['wp:featuredmedia']?.[0]?.source_url;
 
                 return (
                   <div key={episode.id} className={styles.cardGroup}>
-                    {/* IN-GRID ADSTERRA NATIVE AD SLOT */}
                     {index === 2 && NATIVE_AD_CODE && (
                       <article className={`${styles.card} ${styles.adCard}`}>
                         <div className={styles.adLabel}>ADVERTISEMENT / ADSTERRA NATIVE AD</div>
@@ -69,7 +65,6 @@ export default async function Home() {
                       </article>
                     )}
 
-                    {/* Updated Link to /watch/ */}
                     <Link href={`/watch/${episode.id}`} className={styles.cardLink}>
                       <article className={styles.card}>
                         <div className={styles.thumbnailWrapper}>
