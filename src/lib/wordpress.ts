@@ -88,13 +88,38 @@ export async function getCategories(): Promise<WordPressCategory[]> {
 }
 
 /**
+ * Known categories with verified numeric IDs on the WordPress backend.
+ * "Pakistani Drama" is confirmed to have ID 2 on the ByetHost WordPress backend.
+ */
+const KNOWN_CATEGORY_MAP: Record<string, number> = {
+  "pakistani-drama": 2,
+  "pakistani": 2,
+};
+
+/**
  * Finds a category object by slug from `/wp/v2/categories?slug=...` to get its numeric ID.
- * Supports exact slug matching as well as fallback variants (e.g. 'pakistani-drama' matching 'pakistani').
+ * Supports known category map, exact slug matching, and fallback variants (e.g. 'pakistani-drama' matching 'pakistani').
  */
 export async function getCategoryBySlug(slug: string): Promise<WordPressCategory | null> {
+  const normalizedSlug = slug.trim().toLowerCase();
+
+  // Fast-path: Check verified static category map
+  if (KNOWN_CATEGORY_MAP[normalizedSlug]) {
+    return {
+      id: KNOWN_CATEGORY_MAP[normalizedSlug],
+      count: 0,
+      description: "",
+      link: "",
+      name: normalizedSlug.replace(/-/g, " "),
+      slug: normalizedSlug,
+      taxonomy: "category",
+      parent: 0,
+    };
+  }
+
   try {
     const baseUrl = WP_BASE_URL.replace(/\/$/, "");
-    const encodedSlug = encodeURIComponent(slug.trim());
+    const encodedSlug = encodeURIComponent(normalizedSlug);
 
     // 1. Direct query by exact slug
     const directRes = await fetch(`${baseUrl}/wp-json/wp/v2/categories?slug=${encodedSlug}`, {
@@ -113,8 +138,8 @@ export async function getCategoryBySlug(slug: string): Promise<WordPressCategory
     }
 
     // 2. Fallback: if slug has '-drama' suffix (e.g. 'pakistani-drama'), query clean slug ('pakistani')
-    if (slug.endsWith("-drama")) {
-      const cleanSlug = slug.replace(/-drama$/, "");
+    if (normalizedSlug.endsWith("-drama")) {
+      const cleanSlug = normalizedSlug.replace(/-drama$/, "");
       const altRes = await fetch(`${baseUrl}/wp-json/wp/v2/categories?slug=${encodeURIComponent(cleanSlug)}`, {
         next: { revalidate: 60 },
         headers: DEFAULT_FETCH_HEADERS,
@@ -133,13 +158,13 @@ export async function getCategoryBySlug(slug: string): Promise<WordPressCategory
 
     // 3. Fallback: search all categories by slug or name
     const allCategories = await getCategories();
-    const clean = slug.toLowerCase().replace(/-drama$/, "");
+    const clean = normalizedSlug.replace(/-drama$/, "");
     return (
       allCategories.find(
         (c) =>
-          c.slug.toLowerCase() === slug.toLowerCase() ||
+          c.slug.toLowerCase() === normalizedSlug ||
           c.slug.toLowerCase() === clean ||
-          c.name.toLowerCase() === slug.toLowerCase() ||
+          c.name.toLowerCase() === normalizedSlug ||
           c.name.toLowerCase().includes(clean),
       ) || null
     );
@@ -218,19 +243,44 @@ export const getEpisodes = getPosts;
 
 /**
  * Fetches posts for a specific category slug:
- * 1. Fetches the category object by slug (from `/wp/v2/categories?slug=...`) to get its numeric ID.
- * 2. Queries the posts using that numeric ID (`/wp/v2/posts?categories=ID&_embed=true`).
+ * 1. If categorySlug is 'pakistani-drama', queries posts directly with ?categories=2&_embed=true.
+ * 2. For other categories, queries /wp/v2/categories?slug=... to resolve the numeric category ID.
+ * 3. Queries /wp/v2/posts?categories=<id>&_embed=true.
+ * 4. Logs clear diagnostic information if category filtering returns empty.
  */
 export async function getCategoryPosts(categorySlug: string): Promise<WordPressPost[]> {
   try {
-    const category = await getCategoryBySlug(categorySlug);
-    if (!category || !category.id) {
-      console.warn(`[WordPress API] No numeric category ID found for slug '${categorySlug}'`);
+    const normalizedSlug = categorySlug.trim().toLowerCase();
+    let categoryId: number | null = KNOWN_CATEGORY_MAP[normalizedSlug] ?? null;
+
+    // Resolve slug to numeric ID via API if not in known static map
+    if (!categoryId) {
+      const category = await getCategoryBySlug(normalizedSlug);
+      if (category && category.id) {
+        categoryId = category.id;
+      }
+    }
+
+    if (!categoryId) {
+      console.error(
+        `[WordPress API] Category resolution failed: Unable to find numeric ID for slug '${categorySlug}'. ` +
+        `Verify category existence at ${WP_BASE_URL}/wp-json/wp/v2/categories?slug=${encodeURIComponent(categorySlug)}`
+      );
       return [];
     }
 
-    // Query posts using the resolved numeric ID
-    return await getPosts({ category: category.id });
+    // Query posts using the numeric category ID (/wp/v2/posts?categories=<id>&_embed=true)
+    const posts = await getPosts({ category: categoryId });
+
+    // Fallback diagnostic logging if filtering returns 0 posts
+    if (posts.length === 0) {
+      console.warn(
+        `[WordPress API] Category filtering returned 0 posts for slug '${categorySlug}' (numeric category ID: ${categoryId}). ` +
+        `Target URL was: ${WP_BASE_URL}/wp-json/wp/v2/posts?categories=${categoryId}&_embed=true`
+      );
+    }
+
+    return posts;
   } catch (error) {
     console.error(`[WordPress API] Error in getCategoryPosts for '${categorySlug}':`, error);
     return [];
