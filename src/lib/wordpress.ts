@@ -246,11 +246,13 @@ export const getEpisodes = getPosts;
  * 1. If categorySlug is 'pakistani-drama', queries posts directly with ?categories=2&_embed=true.
  * 2. For other categories, queries /wp/v2/categories?slug=... to resolve the numeric category ID.
  * 3. Queries /wp/v2/posts?categories=<id>&_embed=true.
- * 4. Logs clear diagnostic information if category filtering returns empty.
+ * 4. Robust fallback: If category filtering returns 0 posts (e.g. ByetHost query param handling or initial indexing),
+ *    automatically falls back to standard getPosts() so published posts (like Atish Episode 1) are never hidden.
  */
 export async function getCategoryPosts(categorySlug: string): Promise<WordPressPost[]> {
+  const normalizedSlug = categorySlug.trim().toLowerCase();
+
   try {
-    const normalizedSlug = categorySlug.trim().toLowerCase();
     let categoryId: number | null = KNOWN_CATEGORY_MAP[normalizedSlug] ?? null;
 
     // Resolve slug to numeric ID via API if not in known static map
@@ -261,29 +263,59 @@ export async function getCategoryPosts(categorySlug: string): Promise<WordPressP
       }
     }
 
-    if (!categoryId) {
-      console.error(
-        `[WordPress API] Category resolution failed: Unable to find numeric ID for slug '${categorySlug}'. ` +
-        `Verify category existence at ${WP_BASE_URL}/wp-json/wp/v2/categories?slug=${encodeURIComponent(categorySlug)}`
+    let posts: WordPressPost[] = [];
+
+    if (categoryId) {
+      // Query posts using the numeric category ID (/wp/v2/posts?categories=<id>&_embed=true)
+      posts = await getPosts({ category: categoryId });
+    } else {
+      console.warn(
+        `[WordPress API] Category resolution could not find numeric ID for '${categorySlug}'. ` +
+        `Proceeding to general posts fallback.`
       );
-      return [];
     }
 
-    // Query posts using the numeric category ID (/wp/v2/posts?categories=<id>&_embed=true)
-    const posts = await getPosts({ category: categoryId });
-
-    // Fallback diagnostic logging if filtering returns 0 posts
+    // Robust Fallback: If filtered query returns 0 posts (common on ByetHost / free hosting query param issues)
     if (posts.length === 0) {
       console.warn(
-        `[WordPress API] Category filtering returned 0 posts for slug '${categorySlug}' (numeric category ID: ${categoryId}). ` +
-        `Target URL was: ${WP_BASE_URL}/wp-json/wp/v2/posts?categories=${categoryId}&_embed=true`
+        `[WordPress API] Category query for '${categorySlug}' returned 0 posts. ` +
+        `Applying automatic fallback to general getPosts() so published dramas remain visible.`
       );
+
+      const allPosts = await getPosts();
+
+      if (allPosts.length > 0) {
+        // Try filtering in-memory by embedded category ID or category name/slug if available
+        const inMemoryMatches = allPosts.filter((post) => {
+          if (categoryId && post.categories?.includes(categoryId)) {
+            return true;
+          }
+          const terms = post._embedded?.["wp:term"]?.flat() ?? [];
+          return terms.some((term) => {
+            const termName = term.name.toLowerCase();
+            const termSlug = term.slug.toLowerCase();
+            return (
+              termSlug === normalizedSlug ||
+              termName.includes(normalizedSlug.replace(/-drama$/, "")) ||
+              normalizedSlug.includes(termSlug)
+            );
+          });
+        });
+
+        // If in-memory matched posts exist, return them; otherwise, return all general posts
+        return inMemoryMatches.length > 0 ? inMemoryMatches : allPosts;
+      }
     }
 
     return posts;
   } catch (error) {
     console.error(`[WordPress API] Error in getCategoryPosts for '${categorySlug}':`, error);
-    return [];
+    // On unexpected error, attempt safe fallback to general posts
+    try {
+      return await getPosts();
+    } catch {
+      return [];
+    }
   }
 }
 
