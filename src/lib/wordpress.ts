@@ -48,15 +48,14 @@ export interface WordPressCategory {
 /**
  * Base URL for the WordPress REST API.
  * Configurable via NEXT_PUBLIC_WORDPRESS_URL or NEXT_PUBLIC_PANTHEON_WP_URL.
- * Default points to the ByetHost clean WordPress instance at https://api.dramix.dpdns.org
- * (or https://zeeshanws.byethost7.com).
+ * Default points to the official working ByetHost URL at https://zeeshanws.byethost7.com.
  */
 export const WP_BASE_URL =
   process.env.NEXT_PUBLIC_WORDPRESS_URL ||
   process.env.NEXT_PUBLIC_PANTHEON_WP_URL ||
   process.env.WORDPRESS_URL ||
   process.env.PANTHEON_WP_URL ||
-  "https://api.dramix.dpdns.org";
+  "https://zeeshanws.byethost7.com";
 
 const DEFAULT_FETCH_HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) DramixClient/1.0",
