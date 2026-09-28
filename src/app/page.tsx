@@ -1,15 +1,41 @@
-import styles from "./page.module.css";
-import Link from "next/link";
-import { getPosts, type WordPressPost } from "../lib/wordpress";
+"use client";
 
-// Incremental Static Regeneration (ISR) with 60 seconds interval.
-// Prevents dynamic server usage errors during Vercel SSG builds.
-export const revalidate = 60;
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import styles from "./page.module.css";
+import { getPosts, type WordPressPost } from "../lib/wordpress";
 
 const NATIVE_AD_CODE = ""; // Paste Adsterra Native Grid Ad Script Here
 
-export default async function Home() {
-  const posts: WordPressPost[] = await getPosts();
+export default function Home() {
+  const [posts, setPosts] = useState<WordPressPost[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadData() {
+      setLoading(true);
+      try {
+        const data = await getPosts();
+        if (isMounted) {
+          setPosts(data);
+        }
+      } catch (error) {
+        console.error("Error loading posts:", error);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <div className={styles.pageWrapper}>
@@ -21,7 +47,12 @@ export default async function Home() {
 
         <section className={styles.gridSection}>
           <div className={styles.grid}>
-            {posts.length === 0 ? (
+            {loading ? (
+              <div className={styles.loading}>
+                <div className={styles.spinner} />
+                <span>Loading latest episodes from WordPress...</span>
+              </div>
+            ) : posts.length === 0 ? (
               <div className={styles.empty}>No episodes found. Please check WordPress posts.</div>
             ) : (
               posts.map((post, index) => {

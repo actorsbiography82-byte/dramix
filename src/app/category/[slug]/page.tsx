@@ -1,19 +1,45 @@
-import styles from "../../page.module.css";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
+import styles from "../../page.module.css";
 import { getCategoryPosts, type WordPressPost } from "../../../lib/wordpress";
 
-// Incremental Static Regeneration (ISR) with 60 seconds interval.
-export const revalidate = 60;
-
-export default async function CategoryPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const resolvedParams = await params;
-  const categorySlug = resolvedParams.slug;
+export default function CategoryPage() {
+  const params = useParams();
+  const categorySlug = (params?.slug as string) || "";
   const formattedTitle = categorySlug.replace(/-/g, " ").toUpperCase();
-  const posts: WordPressPost[] = await getCategoryPosts(categorySlug);
+
+  const [posts, setPosts] = useState<WordPressPost[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!categorySlug) return;
+    let isMounted = true;
+
+    async function loadData() {
+      setLoading(true);
+      try {
+        const data = await getCategoryPosts(categorySlug);
+        if (isMounted) {
+          setPosts(data);
+        }
+      } catch (error) {
+        console.error("Error loading category posts:", error);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [categorySlug]);
 
   return (
     <div className={styles.pageWrapper}>
@@ -25,7 +51,12 @@ export default async function CategoryPage({
 
         <section className={styles.gridSection}>
           <div className={styles.grid}>
-            {posts.length === 0 ? (
+            {loading ? (
+              <div className={styles.loading}>
+                <div className={styles.spinner} />
+                <span>Loading dramas from WordPress...</span>
+              </div>
+            ) : posts.length === 0 ? (
               <div className={styles.empty}>No episodes found in this category.</div>
             ) : (
               posts.map((post) => {

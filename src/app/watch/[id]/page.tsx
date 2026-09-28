@@ -1,16 +1,51 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { getPostById, type WordPressPost } from "../../../lib/wordpress";
 
-// Incremental Static Regeneration (ISR) with 60 seconds interval.
-// Replaced cache: 'no-store' and revalidate: 0 to prevent dynamic server usage errors on Vercel.
-export const revalidate = 60;
+export default function WatchPage() {
+  const params = useParams();
+  const id = (params?.id as string) || "";
 
-export default async function WatchPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const resolvedParams = await params;
-  const post: WordPressPost | null = await getPostById(resolvedParams.id);
+  const [post, setPost] = useState<WordPressPost | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+    let isMounted = true;
+
+    async function loadData() {
+      setLoading(true);
+      try {
+        const data = await getPostById(id);
+        if (isMounted) {
+          setPost(data);
+        }
+      } catch (error) {
+        console.error("Error loading episode:", error);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div style={{ padding: "80px 20px", textAlign: "center", minHeight: "60vh" }}>
+        <h2 style={{ fontSize: "22px", color: "#0f172a" }}>Loading Episode...</h2>
+        <p style={{ color: "#64748b", marginTop: "8px" }}>Fetching video player directly from WordPress.</p>
+      </div>
+    );
+  }
 
   if (!post) {
     return (

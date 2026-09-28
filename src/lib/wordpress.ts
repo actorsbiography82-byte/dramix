@@ -70,6 +70,23 @@ const DEFAULT_FETCH_HEADERS: Record<string, string> = {
   "Sec-Fetch-Site": "cross-site",
 };
 
+function getFetchOptions(revalidateSeconds = 60): RequestInit {
+  if (typeof window !== "undefined") {
+    // Browser client-side: browser natively sets User-Agent and manages challenge cookies
+    return {
+      headers: {
+        Accept: "application/json, text/plain, */*",
+      },
+    };
+  }
+
+  // Server-side: use custom browser headers and Next.js ISR revalidation
+  return {
+    headers: DEFAULT_FETCH_HEADERS,
+    next: { revalidate: revalidateSeconds },
+  } as RequestInit;
+}
+
 /**
  * Fetches categories from WordPress.
  */
@@ -78,10 +95,7 @@ export async function getCategories(): Promise<WordPressCategory[]> {
     const baseUrl = WP_BASE_URL.replace(/\/$/, "");
     const url = `${baseUrl}/wp-json/wp/v2/categories?per_page=100`;
 
-    const res = await fetch(url, {
-      next: { revalidate: 3600 },
-      headers: DEFAULT_FETCH_HEADERS,
-    });
+    const res = await fetch(url, getFetchOptions(3600));
 
     if (!res.ok) return [];
     const contentType = res.headers.get("content-type") || "";
@@ -130,10 +144,7 @@ export async function getCategoryBySlug(slug: string): Promise<WordPressCategory
     const encodedSlug = encodeURIComponent(normalizedSlug);
 
     // 1. Direct query by exact slug
-    const directRes = await fetch(`${baseUrl}/wp-json/wp/v2/categories?slug=${encodedSlug}`, {
-      next: { revalidate: 60 },
-      headers: DEFAULT_FETCH_HEADERS,
-    });
+    const directRes = await fetch(`${baseUrl}/wp-json/wp/v2/categories?slug=${encodedSlug}`, getFetchOptions(60));
 
     if (directRes.ok) {
       const contentType = directRes.headers.get("content-type") || "";
@@ -148,10 +159,7 @@ export async function getCategoryBySlug(slug: string): Promise<WordPressCategory
     // 2. Fallback: if slug has '-drama' suffix (e.g. 'pakistani-drama'), query clean slug ('pakistani')
     if (normalizedSlug.endsWith("-drama")) {
       const cleanSlug = normalizedSlug.replace(/-drama$/, "");
-      const altRes = await fetch(`${baseUrl}/wp-json/wp/v2/categories?slug=${encodeURIComponent(cleanSlug)}`, {
-        next: { revalidate: 60 },
-        headers: DEFAULT_FETCH_HEADERS,
-      });
+      const altRes = await fetch(`${baseUrl}/wp-json/wp/v2/categories?slug=${encodeURIComponent(cleanSlug)}`, getFetchOptions(60));
 
       if (altRes.ok) {
         const contentType = altRes.headers.get("content-type") || "";
@@ -222,10 +230,7 @@ export async function getPosts(options: {
 
     const url = `${baseUrl}/wp-json/wp/v2/posts?${params.toString()}`;
 
-    const res = await fetch(url, {
-      next: { revalidate: 60 },
-      headers: DEFAULT_FETCH_HEADERS,
-    });
+    const res = await fetch(url, getFetchOptions(60));
 
     if (!res.ok) {
       console.warn(`[WordPress API] Failed to fetch posts from ${url}. Status: ${res.status}`);
@@ -339,10 +344,7 @@ export async function getPostById(id: string | number): Promise<WordPressPost | 
     const baseUrl = WP_BASE_URL.replace(/\/$/, "");
     const url = `${baseUrl}/wp-json/wp/v2/posts/${id}?_embed=true`;
 
-    const res = await fetch(url, {
-      next: { revalidate: 60 },
-      headers: DEFAULT_FETCH_HEADERS,
-    });
+    const res = await fetch(url, getFetchOptions(60));
 
     if (!res.ok) {
       console.warn(`[WordPress API] Failed to fetch post ${id}. Status: ${res.status}`);
