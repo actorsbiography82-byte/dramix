@@ -1,44 +1,15 @@
 import styles from "./page.module.css";
 import Link from "next/link";
+import { getPosts, type WordPressPost } from "../lib/wordpress";
 
-interface WordPressEpisode {
-  id: number;
-  date: string;
-  slug: string;
-  title: {
-    rendered: string;
-  };
-  content: {
-    rendered: string;
-  };
-  _embedded?: {
-    'wp:featuredmedia'?: Array<{
-      source_url: string;
-    }>;
-  };
-}
+// Incremental Static Regeneration (ISR) with 60 seconds interval.
+// Prevents dynamic server usage errors during Vercel SSG builds.
+export const revalidate = 60;
 
 const NATIVE_AD_CODE = ""; // Paste Adsterra Native Grid Ad Script Here
 
-async function getEpisodes(): Promise<WordPressEpisode[]> {
-  try {
-    const baseUrl = process.env.PANTHEON_WP_URL || process.env.NEXT_PUBLIC_PANTHEON_WP_URL || "https://dev-dramix.pantheonsite.io";
-    
-    // Clean fetch query without extra timestamp parameters
-    const res = await fetch(`${baseUrl}/wp-json/wp/v2/episodes?_embed`, {
-      cache: 'no-store'
-    });
-
-    if (!res.ok) return [];
-    return await res.json();
-  } catch (error) {
-    console.error("Error fetching episodes:", error);
-    return [];
-  }
-}
-
 export default async function Home() {
-  const episodes = await getEpisodes();
+  const posts: WordPressPost[] = await getPosts();
 
   return (
     <div className={styles.pageWrapper}>
@@ -50,14 +21,15 @@ export default async function Home() {
 
         <section className={styles.gridSection}>
           <div className={styles.grid}>
-            {episodes.length === 0 ? (
+            {posts.length === 0 ? (
               <div className={styles.empty}>No episodes found. Please check WordPress posts.</div>
             ) : (
-              episodes.map((episode, index) => {
-                const featuredImg = episode._embedded?.['wp:featuredmedia']?.[0]?.source_url;
+              posts.map((post, index) => {
+                const featuredImg =
+                  post._embedded?.["wp:featuredmedia"]?.[0]?.source_url;
 
                 return (
-                  <div key={episode.id} className={styles.cardGroup}>
+                  <div key={post.id} className={styles.cardGroup}>
                     {index === 2 && NATIVE_AD_CODE && (
                       <article className={`${styles.card} ${styles.adCard}`}>
                         <div className={styles.adLabel}>ADVERTISEMENT / ADSTERRA NATIVE AD</div>
@@ -65,11 +37,16 @@ export default async function Home() {
                       </article>
                     )}
 
-                    <Link href={`/watch/${episode.id}`} className={styles.cardLink}>
+                    <Link href={`/watch/${post.id}`} className={styles.cardLink}>
                       <article className={styles.card}>
                         <div className={styles.thumbnailWrapper}>
                           {featuredImg ? (
-                            <img src={featuredImg} alt={episode.title.rendered} className={styles.thumbnail} />
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={featuredImg}
+                              alt={post.title?.rendered ?? "Drama Thumbnail"}
+                              className={styles.thumbnail}
+                            />
                           ) : (
                             <div className={styles.placeholderImg}>DRAMIX HD</div>
                           )}
@@ -79,10 +56,10 @@ export default async function Home() {
                         <div className={styles.cardContent}>
                           <h2
                             className={styles.cardTitle}
-                            dangerouslySetInnerHTML={{ __html: episode.title.rendered }}
+                            dangerouslySetInnerHTML={{ __html: post.title?.rendered ?? "" }}
                           />
                           <span className={styles.date}>
-                            {new Date(episode.date).toLocaleDateString()}
+                            {new Date(post.date).toLocaleDateString()}
                           </span>
                         </div>
                       </article>
