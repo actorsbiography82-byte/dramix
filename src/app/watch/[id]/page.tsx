@@ -1,4 +1,4 @@
-import { getSinglePost, type WordPressPost } from "../../../lib/wordpress";
+import { getPostById, type WordPressPost } from "../../../lib/wordpress";
 
 // Incremental Static Regeneration (ISR) with 60 seconds interval.
 // Replaced cache: 'no-store' and revalidate: 0 to prevent dynamic server usage errors on Vercel.
@@ -10,7 +10,7 @@ export default async function WatchPage({
   params: Promise<{ id: string }>;
 }) {
   const resolvedParams = await params;
-  const post: WordPressPost | null = await getSinglePost(resolvedParams.id);
+  const post: WordPressPost | null = await getPostById(resolvedParams.id);
 
   if (!post) {
     return (

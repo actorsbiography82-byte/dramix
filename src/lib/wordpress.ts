@@ -45,8 +45,16 @@ export interface WordPressCategory {
   parent: number;
 }
 
+/**
+ * Base URL for the WordPress REST API.
+ * Configurable via NEXT_PUBLIC_WORDPRESS_URL or NEXT_PUBLIC_PANTHEON_WP_URL.
+ * Default points to the ByetHost clean WordPress instance at https://api.dramix.dpdns.org
+ * (or https://zeeshanws.byethost7.com).
+ */
 export const WP_BASE_URL =
+  process.env.NEXT_PUBLIC_WORDPRESS_URL ||
   process.env.NEXT_PUBLIC_PANTHEON_WP_URL ||
+  process.env.WORDPRESS_URL ||
   process.env.PANTHEON_WP_URL ||
   "https://api.dramix.dpdns.org";
 
@@ -143,7 +151,7 @@ export async function getCategoryBySlug(slug: string): Promise<WordPressCategory
 }
 
 /**
- * Fetches standard WordPress posts with embedded media and terms.
+ * Fetches standard WordPress posts with embedded media and terms from `/wp/v2/posts`.
  * If a category slug string is passed, it automatically resolves it to a numeric ID first.
  * Uses Next.js ISR with revalidate: 60 to prevent dynamic server usage errors on Vercel.
  */
@@ -212,7 +220,7 @@ export const getEpisodes = getPosts;
 /**
  * Fetches posts for a specific category slug:
  * 1. Fetches the category object by slug (from `/wp/v2/categories?slug=...`) to get its numeric ID.
- * 2. Queries the posts using that numeric ID (`/wp/v2/posts?categories=ID&_embed`).
+ * 2. Queries the posts using that numeric ID (`/wp/v2/posts?categories=ID&_embed=true`).
  */
 export async function getCategoryPosts(categorySlug: string): Promise<WordPressPost[]> {
   try {
@@ -234,13 +242,13 @@ export async function getCategoryPosts(categorySlug: string): Promise<WordPressP
 export const getCategoryEpisodes = getCategoryPosts;
 
 /**
- * Fetches a single post by ID from /wp-json/wp/v2/posts/{id}?_embed.
+ * Fetches a single post by ID from /wp-json/wp/v2/posts/{id}?_embed=true.
  * Uses ISR revalidate: 60 (avoids cache: 'no-store' or revalidate: 0 dynamic server errors).
  */
-export async function getSinglePost(id: string | number): Promise<WordPressPost | null> {
+export async function getPostById(id: string | number): Promise<WordPressPost | null> {
   try {
     const baseUrl = WP_BASE_URL.replace(/\/$/, "");
-    const url = `${baseUrl}/wp-json/wp/v2/posts/${id}?_embed`;
+    const url = `${baseUrl}/wp-json/wp/v2/posts/${id}?_embed=true`;
 
     const res = await fetch(url, {
       next: { revalidate: 60 },
@@ -264,5 +272,6 @@ export async function getSinglePost(id: string | number): Promise<WordPressPost 
   }
 }
 
-// Backwards-compatible alias
-export const getSingleEpisode = getSinglePost;
+// Aliases for backwards compatibility
+export const getSinglePost = getPostById;
+export const getSingleEpisode = getPostById;
