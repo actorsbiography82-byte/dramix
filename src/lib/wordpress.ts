@@ -312,27 +312,40 @@ export async function getPosts(): Promise<WordPressPost[]> {
 export const getEpisodes = getPosts;
 
 /**
- * Fetches posts filtered by category slug or name (e.g. 'pakistani-drama', 'turkish-drama').
+ * Normalizes a category string or slug for strict, case-insensitive comparison.
+ * Removes '-drama' suffix, ' drama' suffix, spaces, and special characters.
+ * E.g., 'Pakistani Drama', 'pakistani-drama', 'Pakistani' all normalize to 'pakistani'.
+ */
+export function normalizeCategoryKey(cat: string): string {
+  if (!cat) return "";
+  return cat
+    .toLowerCase()
+    .trim()
+    .replace(/-drama$/, "")
+    .replace(/\s+drama$/, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+/**
+ * Strictly filters dramas where the row's category matches the requested slug.
+ * Does NOT fall back to general posts when there are 0 matches, ensuring categories never mix up.
  */
 export async function getCategoryPosts(categorySlug: string): Promise<WordPressPost[]> {
   const dramas = await fetchGoogleSheetDramas();
-  const normalizedQuery = categorySlug.trim().toLowerCase().replace(/-drama$/, "");
+  const targetKey = normalizeCategoryKey(categorySlug);
+
+  if (!targetKey) return [];
 
   const filtered = dramas.filter((d) => {
-    const dramaCat = (d.category || "").toLowerCase();
-    const dramaCatSlug = dramaCat.replace(/[^a-z0-9]+/g, "-");
-    return (
-      dramaCatSlug.includes(normalizedQuery) ||
-      dramaCat.includes(normalizedQuery) ||
-      categorySlug.toLowerCase().includes(dramaCatSlug)
-    );
+    const dramaKey = normalizeCategoryKey(d.category || "");
+    return dramaKey === targetKey;
   });
 
-  // If filtered matches exist, return them; otherwise return all dramas so nothing is blank
-  const result = filtered.length > 0 ? filtered : dramas;
-  return result.map(mapDramaToPost);
+  return filtered.map(mapDramaToPost);
 }
 
+// Aliases for compatibility
+export const getPostsByCategory = getCategoryPosts;
 export const getCategoryEpisodes = getCategoryPosts;
 
 /**
