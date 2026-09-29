@@ -42,7 +42,7 @@ export default function WatchPage() {
     return (
       <div style={{ padding: "80px 20px", textAlign: "center", minHeight: "60vh" }}>
         <h2 style={{ fontSize: "22px", color: "#0f172a" }}>Loading Episode...</h2>
-        <p style={{ color: "#64748b", marginTop: "8px" }}>Fetching video player directly from WordPress.</p>
+        <p style={{ color: "#64748b", marginTop: "8px" }}>Loading video player...</p>
       </div>
     );
   }
@@ -52,7 +52,7 @@ export default function WatchPage() {
       <div style={{ padding: "80px 20px", textAlign: "center", minHeight: "60vh" }}>
         <h2 style={{ fontSize: "24px", color: "#0f172a" }}>Episode Not Found</h2>
         <p style={{ color: "#64748b", marginTop: "10px" }}>
-          The requested episode could not be retrieved from WordPress.
+          The requested episode could not be found.
         </p>
       </div>
     );

@@ -50,10 +50,10 @@ export default function Home() {
             {loading ? (
               <div className={styles.loading}>
                 <div className={styles.spinner} />
-                <span>Loading latest episodes from WordPress...</span>
+                <span>Loading latest drama episodes...</span>
               </div>
             ) : posts.length === 0 ? (
-              <div className={styles.empty}>No episodes found. Please check WordPress posts.</div>
+              <div className={styles.empty}>No episodes found.</div>
             ) : (
               posts.map((post, index) => {
                 const featuredImg =

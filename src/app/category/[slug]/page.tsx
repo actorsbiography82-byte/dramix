@@ -54,7 +54,7 @@ export default function CategoryPage() {
             {loading ? (
               <div className={styles.loading}>
                 <div className={styles.spinner} />
-                <span>Loading dramas from WordPress...</span>
+                <span>Loading dramas...</span>
               </div>
             ) : posts.length === 0 ? (
               <div className={styles.empty}>No episodes found in this category.</div>
