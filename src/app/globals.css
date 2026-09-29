@@ -3,7 +3,12 @@
 @tailwind utilities;
 
 :root {
-  --background: #0b0e14;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+}
+
+html.dark {
+  --background: #0a0d14;
   --foreground: #f8fafc;
 }
 
@@ -15,30 +20,45 @@
 
 html,
 body {
-  background-color: #0b0e14;
-  color: #f8fafc;
+  background-color: var(--background);
+  color: var(--foreground);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   min-height: 100vh;
   overflow-x: hidden;
   scroll-behavior: smooth;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-/* Custom Scrollbar for Luxury Theater Look */
+/* Light Mode Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0b0e14;
+  background: #f1f5f9;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #cbd5e1;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
+  background: #e50914;
+}
+
+/* Dark Mode Custom Scrollbar */
+.dark ::-webkit-scrollbar-track {
+  background: #0b0e14;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
   background: #e50914;
 }
 
