@@ -119,10 +119,10 @@ export default function Footer({ adCodeFooter728x90 }: FooterProps) {
         </div>
 
         {/* Bottom Copyright */}
-        <div className="mt-12 pt-8 border-t border-slate-200 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <p>© {new Date().getFullYear()} DRAMIX. All rights reserved.</p>
-          <p className="text-center sm:text-right">
-            Non-hosted streaming links. DRAMIX does not host media files on its servers.
+        <div className="mt-12 pt-8 border-t border-slate-200 dark:border-white/5 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+          <p className="flex-shrink-0">© {new Date().getFullYear()} DRAMIX. All rights reserved.</p>
+          <p className="text-center md:text-right max-w-2xl leading-relaxed text-[11px] text-slate-500 dark:text-slate-400">
+            Dramix functions as a digital index and directory of publicly available media links. We do not host, store, upload, or control any video files on our servers. All embedded content is hosted on third-party platforms.
           </p>
         </div>
       </div>

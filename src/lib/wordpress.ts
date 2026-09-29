@@ -414,3 +414,179 @@ export async function getCategoryBySlug(slug: string): Promise<WordPressCategory
     ) || null
   );
 }
+
+export interface DramaSeries {
+  title: string;
+  slug: string;
+  category: string;
+  categorySlug: string;
+  thumbnail: string;
+  description: string;
+  episodeCount: number;
+  episodes: WordPressPost[];
+}
+
+/**
+ * Extracts a series title from an episode title string.
+ * Examples:
+ * "Atish — Episode 1" -> "Atish"
+ * "Kurulus Osman — Episode 1" -> "Kurulus Osman"
+ * "Anupamaa — Latest Episode" -> "Anupamaa"
+ * "Tere Bin - Ep 5" -> "Tere Bin"
+ * "Queen of Tears — Episode 1" -> "Queen of Tears"
+ */
+export function extractSeriesName(rawTitle: string): string {
+  if (!rawTitle) return "Drama";
+  let clean = rawTitle.trim();
+  clean = clean.replace(/<[^>]*>?/gm, "").replace(/&mdash;|&ndash;|&#8212;|&#8211;/g, "—");
+
+  // Check for common separators followed by episode/season/part/number
+  const splitMatch = clean.split(/\s*(?:—|–|-|\||:)\s*(?:episode|ep|season|latest|part|\d)/i);
+  if (splitMatch.length > 1 && splitMatch[0].trim().length > 0) {
+    return splitMatch[0].trim();
+  }
+
+  // Check pattern "Series Name Episode 1"
+  const epMatch = clean.match(/^(.*?)\s+(?:episode|ep\.?|season|part)\s*\d+/i);
+  if (epMatch && epMatch[1].trim().length > 0) {
+    return epMatch[1].trim();
+  }
+
+  // Check separator alone if title is "Drama Name - Subtitle"
+  const dashSplit = clean.split(/\s*(?:—|–|-|\|)\s*/);
+  if (dashSplit.length > 1 && dashSplit[0].trim().length > 0) {
+    return dashSplit[0].trim();
+  }
+
+  return clean;
+}
+
+export function extractSeriesSlug(rawTitle: string): string {
+  const name = extractSeriesName(rawTitle);
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "drama"
+  );
+}
+
+/**
+ * Groups all posts into unique drama series.
+ */
+export async function getAllSeries(): Promise<DramaSeries[]> {
+  const posts = await getPosts();
+  const seriesMap = new Map<string, DramaSeries>();
+
+  for (const post of posts) {
+    const rawTitle = post.title?.rendered || "";
+    const seriesTitle = extractSeriesName(rawTitle);
+    const seriesSlug = extractSeriesSlug(rawTitle);
+
+    const catName = post.category || "General";
+    const catSlug = catName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    const thumb =
+      post._embedded?.["wp:featuredmedia"]?.[0]?.source_url ||
+      (post.youtubeUrl ? `https://img.youtube.com/vi/${extractYouTubeId(post.youtubeUrl)}/hqdefault.jpg` : "");
+    const desc = post.excerpt?.rendered?.replace(/<[^>]*>?/gm, "") || "";
+
+    if (!seriesMap.has(seriesSlug)) {
+      seriesMap.set(seriesSlug, {
+        title: seriesTitle,
+        slug: seriesSlug,
+        category: catName,
+        categorySlug: catSlug,
+        thumbnail: thumb,
+        description: desc,
+        episodeCount: 1,
+        episodes: [post],
+      });
+    } else {
+      const existing = seriesMap.get(seriesSlug)!;
+      existing.episodeCount += 1;
+      existing.episodes.push(post);
+      if (!existing.thumbnail && thumb) {
+        existing.thumbnail = thumb;
+      }
+      if (!existing.description && desc) {
+        existing.description = desc;
+      }
+    }
+  }
+
+  return Array.from(seriesMap.values());
+}
+
+/**
+ * Returns drama series filtered by category slug.
+ */
+export async function getSeriesByCategory(categorySlug: string): Promise<DramaSeries[]> {
+  const all = await getAllSeries();
+  const targetKey = normalizeCategoryKey(categorySlug);
+  if (!targetKey) return all;
+
+  return all.filter((s) => {
+    return normalizeCategoryKey(s.category) === targetKey || normalizeCategoryKey(s.categorySlug) === targetKey;
+  });
+}
+
+/**
+ * Fetches a single drama series by its slug.
+ */
+export async function getSeriesBySlug(seriesSlug: string): Promise<DramaSeries | null> {
+  const all = await getAllSeries();
+  const target = seriesSlug.trim().toLowerCase();
+
+  const found = all.find(
+    (s) => s.slug.toLowerCase() === target || s.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") === target
+  );
+
+  return found || null;
+}
+
+export interface CategoryDropdownItem {
+  name: string;
+  slug: string;
+  dramas: Array<{
+    title: string;
+    slug: string;
+    episodeCount: number;
+    thumbnail: string;
+  }>;
+}
+
+/**
+ * Returns grouped data for header category dropdowns.
+ */
+export async function getCategoryDropdownData(): Promise<Record<string, CategoryDropdownItem>> {
+  const seriesList = await getAllSeries();
+
+  const knownCategories: Array<{ key: string; name: string; slug: string }> = [
+    { key: "pakistani", name: "Pakistani Drama", slug: "pakistani-drama" },
+    { key: "turkish", name: "Turkish Drama", slug: "turkish-drama" },
+    { key: "indian", name: "Indian Drama", slug: "indian-drama" },
+    { key: "korean", name: "Korean Drama", slug: "korean-drama" },
+  ];
+
+  const result: Record<string, CategoryDropdownItem> = {};
+
+  for (const cat of knownCategories) {
+    const matching = seriesList.filter(
+      (s) => normalizeCategoryKey(s.category) === cat.key || normalizeCategoryKey(s.categorySlug) === cat.key
+    );
+
+    result[cat.slug] = {
+      name: cat.name,
+      slug: cat.slug,
+      dramas: matching.map((m) => ({
+        title: m.title,
+        slug: m.slug,
+        episodeCount: m.episodeCount,
+        thumbnail: m.thumbnail,
+      })),
+    };
+  }
+
+  return result;
+}
+
