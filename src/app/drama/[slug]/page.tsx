@@ -1,60 +1,61 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import type { Metadata } from "next";
 import Link from "next/link";
-import { getSeriesBySlug, type DramaSeries } from "../../../lib/wordpress";
+import { getSeriesBySlug } from "../../../lib/wordpress";
 
-export default function DramaSeriesPage() {
-  const params = useParams();
-  const slug = (params?.slug as string) || "";
+type Props = {
+  params: Promise<{ slug: string }>;
+};
 
-  const [series, setSeries] = useState<DramaSeries | null>(null);
-  const [loading, setLoading] = useState(true);
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const series = await getSeriesBySlug(slug);
 
-  useEffect(() => {
-    if (!slug) return;
-    let isMounted = true;
-
-    async function loadSeries() {
-      setLoading(true);
-      try {
-        const data = await getSeriesBySlug(slug);
-        if (isMounted) {
-          setSeries(data);
-        }
-      } catch (err) {
-        console.error("Error loading drama series:", err);
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadSeries();
-
-    return () => {
-      isMounted = false;
+  if (!series) {
+    return {
+      title: "Drama Series Not Found — DRAMIX",
+      description: "The requested drama series could not be found on DRAMIX.",
     };
-  }, [slug]);
-
-  if (loading) {
-    return (
-      <div className="w-full min-h-[75vh] flex flex-col items-center justify-center bg-slate-50 dark:bg-[#0a0d14] text-slate-900 dark:text-white px-4">
-        <div className="w-12 h-12 border-4 border-red-600/30 border-t-red-600 rounded-full animate-spin mb-4" />
-        <h2 className="text-xl font-bold">Loading Series...</h2>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Retrieving all drama episodes</p>
-      </div>
-    );
   }
+
+  const title = `${series.title} — Watch All Episodes in HD | DRAMIX`;
+  const description =
+    series.metaDescription?.trim() ||
+    series.description?.trim() ||
+    `Stream all latest episodes of ${series.title} in Full HD quality on DRAMIX. Watch top ${series.category} episodes online with daily updates.`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "video.tv_show",
+      images: series.thumbnail ? [{ url: series.thumbnail, alt: series.title }] : [],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: series.thumbnail ? [series.thumbnail] : [],
+    },
+  };
+}
+
+export default async function DramaSeriesPage({ params }: Props) {
+  const { slug } = await params;
+  const series = await getSeriesBySlug(slug);
 
   if (!series) {
     return (
       <div className="w-full min-h-[75vh] flex flex-col items-center justify-center bg-slate-50 dark:bg-[#0a0d14] text-slate-900 dark:text-white px-4 text-center">
         <div className="w-16 h-16 rounded-full bg-slate-200 dark:bg-white/5 border border-slate-300 dark:border-white/10 flex items-center justify-center text-slate-400 mb-4">
           <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.5"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
           </svg>
         </div>
         <h2 className="text-2xl font-bold">Drama Series Not Found</h2>
@@ -134,7 +135,8 @@ export default function DramaSeriesPage() {
               </h1>
 
               <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl mb-6">
-                {series.description ||
+                {series.metaDescription ||
+                  series.description ||
                   `Stream all latest episodes of ${series.title} in breathtaking Full HD quality on DRAMIX.`}
               </p>
 

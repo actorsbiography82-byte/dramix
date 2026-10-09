@@ -23,6 +23,8 @@ export interface WordPressPost {
   categories?: number[];
   category?: string;
   youtubeUrl?: string;
+  metaDescription?: string;
+  meta_description?: string;
   tags?: number[];
   _embedded?: {
     "wp:featuredmedia"?: Array<{
@@ -54,6 +56,8 @@ export interface DramaItem {
   youtubeUrl: string;
   thumbnail: string;
   description: string;
+  metaDescription?: string;
+  meta_description?: string;
   date: string;
 }
 
@@ -75,6 +79,8 @@ const FALLBACK_DRAMAS: DramaItem[] = [
     youtubeUrl: "https://www.youtube.com/watch?v=ScMzIvxBSi4",
     thumbnail: "https://images.unsplash.com/photo-1598899134739-24c46f58b8c0?q=80&w=600&auto=format&fit=crop",
     description: "Watch Atish Episode 1 in Full HD. Stream top Pakistani drama episodes online.",
+    metaDescription: "Stream Atish Episode 1 and full drama series online in 1080p Full HD on DRAMIX. Updated daily with new episodes.",
+    meta_description: "Stream Atish Episode 1 and full drama series online in 1080p Full HD on DRAMIX. Updated daily with new episodes.",
     date: new Date().toISOString(),
   },
   {
@@ -85,6 +91,8 @@ const FALLBACK_DRAMAS: DramaItem[] = [
     youtubeUrl: "https://www.youtube.com/watch?v=ScMzIvxBSi4",
     thumbnail: "https://images.unsplash.com/photo-1440404653325-ab127d49abc1?q=80&w=600&auto=format&fit=crop",
     description: "The epic historical Turkish series continues. Watch Kurulus Osman Episode 1.",
+    metaDescription: "Watch Kurulus Osman all episodes with English and Urdu subtitles in Full HD on DRAMIX. The epic Turkish historical drama.",
+    meta_description: "Watch Kurulus Osman all episodes with English and Urdu subtitles in Full HD on DRAMIX. The epic Turkish historical drama.",
     date: new Date().toISOString(),
   },
   {
@@ -95,6 +103,8 @@ const FALLBACK_DRAMAS: DramaItem[] = [
     youtubeUrl: "https://www.youtube.com/watch?v=ScMzIvxBSi4",
     thumbnail: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=600&auto=format&fit=crop",
     description: "Watch the latest high-voltage drama unfold in Anupamaa.",
+    metaDescription: "Stream the latest high-voltage episodes of Anupamaa in Full HD on DRAMIX. Watch Hindi serial drama online free.",
+    meta_description: "Stream the latest high-voltage episodes of Anupamaa in Full HD on DRAMIX. Watch Hindi serial drama online free.",
     date: new Date().toISOString(),
   },
   {
@@ -105,6 +115,8 @@ const FALLBACK_DRAMAS: DramaItem[] = [
     youtubeUrl: "https://www.youtube.com/watch?v=ScMzIvxBSi4",
     thumbnail: "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=600&auto=format&fit=crop",
     description: "Experience the heartwarming romance and challenges in Queen of Tears.",
+    metaDescription: "Experience Queen of Tears K-Drama full episodes online in Full HD with subtitles on DRAMIX.",
+    meta_description: "Experience Queen of Tears K-Drama full episodes online in Full HD with subtitles on DRAMIX.",
     date: new Date().toISOString(),
   },
 ];
@@ -234,6 +246,8 @@ function mapDramaToPost(item: DramaItem): WordPressPost {
     },
     category: item.category,
     youtubeUrl: item.youtubeUrl,
+    metaDescription: item.metaDescription || item.meta_description || item.description || "",
+    meta_description: item.meta_description || item.metaDescription || item.description || "",
     categories: [item.id],
     _embedded: {
       "wp:featuredmedia": posterUrl ? [{ source_url: posterUrl }] : [],
@@ -284,6 +298,17 @@ export async function fetchGoogleSheetDramas(): Promise<DramaItem[]> {
 
     return rows.map((r, index) => {
       const idNum = parseInt(r.id || "", 10);
+      const metaDesc =
+        r.metadescription ||
+        r.meta_description ||
+        r.metadesc ||
+        r.seodescription ||
+        r.seo_description ||
+        r.description ||
+        r.desc ||
+        r.synopsis ||
+        "";
+
       return {
         id: !Number.isNaN(idNum) && idNum > 0 ? idNum : index + 1,
         title: r.title || `Episode ${index + 1}`,
@@ -292,6 +317,8 @@ export async function fetchGoogleSheetDramas(): Promise<DramaItem[]> {
         youtubeUrl: r.youtubeurl || r.youtube || r.url || r.link || "",
         thumbnail: r.thumbnail || r.image || r.poster || "",
         description: r.description || r.desc || r.synopsis || "",
+        metaDescription: metaDesc,
+        meta_description: metaDesc,
         date: r.date || new Date().toISOString(),
       };
     });
@@ -422,6 +449,8 @@ export interface DramaSeries {
   categorySlug: string;
   thumbnail: string;
   description: string;
+  metaDescription?: string;
+  meta_description?: string;
   episodeCount: number;
   episodes: WordPressPost[];
 }
@@ -489,6 +518,7 @@ export async function getAllSeries(): Promise<DramaSeries[]> {
       post._embedded?.["wp:featuredmedia"]?.[0]?.source_url ||
       (post.youtubeUrl ? `https://img.youtube.com/vi/${extractYouTubeId(post.youtubeUrl)}/hqdefault.jpg` : "");
     const desc = post.excerpt?.rendered?.replace(/<[^>]*>?/gm, "") || "";
+    const metaDesc = post.metaDescription || post.meta_description || desc || "";
 
     if (!seriesMap.has(seriesSlug)) {
       seriesMap.set(seriesSlug, {
@@ -498,6 +528,8 @@ export async function getAllSeries(): Promise<DramaSeries[]> {
         categorySlug: catSlug,
         thumbnail: thumb,
         description: desc,
+        metaDescription: metaDesc,
+        meta_description: metaDesc,
         episodeCount: 1,
         episodes: [post],
       });
@@ -510,6 +542,10 @@ export async function getAllSeries(): Promise<DramaSeries[]> {
       }
       if (!existing.description && desc) {
         existing.description = desc;
+      }
+      if (!existing.metaDescription && metaDesc) {
+        existing.metaDescription = metaDesc;
+        existing.meta_description = metaDesc;
       }
     }
   }
