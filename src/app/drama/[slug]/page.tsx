@@ -222,7 +222,11 @@ export default async function DramaSeriesPage({ params }: Props) {
                   </div>
 
                   <span className="absolute top-2.5 right-2.5 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-red-600 text-white tracking-wider shadow-md">
-                    HD
+                    {ep.title?.rendered && /ost|soundtrack|title\s+song/i.test(ep.title.rendered)
+                      ? "OST"
+                      : ep.title?.rendered && /teaser|trailer|promo/i.test(ep.title.rendered)
+                      ? "TEASER"
+                      : "HD"}
                   </span>
                 </div>
 
@@ -235,7 +239,9 @@ export default async function DramaSeriesPage({ params }: Props) {
                   <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                     <span>{formattedDate}</span>
                     <span className="text-red-600 dark:text-red-400 font-semibold group-hover:translate-x-1 transition-transform inline-flex items-center">
-                      Watch Episode
+                      {ep.title?.rendered && /ost|soundtrack|song/i.test(ep.title.rendered)
+                        ? "Listen Now"
+                        : "Watch Now"}
                       <svg className="w-3.5 h-3.5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                       </svg>

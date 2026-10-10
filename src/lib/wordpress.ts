@@ -23,6 +23,8 @@ export interface WordPressPost {
   categories?: number[];
   category?: string;
   youtubeUrl?: string;
+  seriesName?: string;
+  seriesSlug?: string;
   metaDescription?: string;
   meta_description?: string;
   tags?: number[];
@@ -52,6 +54,8 @@ export interface DramaItem {
   id: number;
   title: string;
   slug: string;
+  seriesName?: string;
+  seriesSlug?: string;
   category: string;
   youtubeUrl: string;
   thumbnail: string;
@@ -231,6 +235,9 @@ function mapDramaToPost(item: DramaItem): WordPressPost {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
+  const seriesName = item.seriesName || extractSeriesName(item.title);
+  const seriesSlug = item.seriesSlug || extractSeriesSlug(seriesName);
+
   return {
     id: item.id,
     date: item.date || new Date().toISOString(),
@@ -246,6 +253,8 @@ function mapDramaToPost(item: DramaItem): WordPressPost {
     },
     category: item.category,
     youtubeUrl: item.youtubeUrl,
+    seriesName,
+    seriesSlug,
     metaDescription: item.metaDescription || item.meta_description || item.description || "",
     meta_description: item.meta_description || item.metaDescription || item.description || "",
     categories: [item.id],
@@ -266,6 +275,34 @@ function mapDramaToPost(item: DramaItem): WordPressPost {
 }
 
 /**
+ * Sorts items in descending order (newest first).
+ * Prioritizes:
+ * 1. Timestamp date (if distinct by more than 1 minute)
+ * 2. Numeric ID descending (latest row added to sheet comes first)
+ */
+export function sortNewestFirst<T extends { id?: number; date?: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    // 1. If explicit dates are provided and differ by more than 1 minute
+    if (a.date && b.date) {
+      const timeA = new Date(a.date).getTime();
+      const timeB = new Date(b.date).getTime();
+      if (!isNaN(timeA) && !isNaN(timeB) && Math.abs(timeA - timeB) > 60000) {
+        return timeB - timeA;
+      }
+    }
+
+    // 2. Highest ID / row index comes first (e.g., Episode 3 with ID 6 comes before Episode 1 with ID 4 and Teaser with ID 1)
+    const idA = typeof a.id === "number" ? a.id : 0;
+    const idB = typeof b.id === "number" ? b.id : 0;
+    if (idA !== idB) {
+      return idB - idA;
+    }
+
+    return 0;
+  });
+}
+
+/**
  * Fetches and parses all drama items directly from the Google Sheet CSV.
  */
 export async function fetchGoogleSheetDramas(): Promise<DramaItem[]> {
@@ -277,7 +314,7 @@ export async function fetchGoogleSheetDramas(): Promise<DramaItem[]> {
 
     if (!res.ok) {
       console.warn(`[Google Sheet] Failed to fetch CSV from ${url}. HTTP status: ${res.status}`);
-      return FALLBACK_DRAMAS;
+      return sortNewestFirst(FALLBACK_DRAMAS);
     }
 
     const text = await res.text();
@@ -287,16 +324,16 @@ export async function fetchGoogleSheetDramas(): Promise<DramaItem[]> {
       console.warn(
         "[Google Sheet] Google Sheet returned HTML instead of CSV. Ensure Google Sheet sharing is set to 'Anyone with the link can view' (or Publish to Web as CSV). Using fallback dramas."
       );
-      return FALLBACK_DRAMAS;
+      return sortNewestFirst(FALLBACK_DRAMAS);
     }
 
     const rows = parseCSV(text);
     if (rows.length === 0) {
       console.warn("[Google Sheet] No data rows parsed from Google Sheet CSV. Using fallback dramas.");
-      return FALLBACK_DRAMAS;
+      return sortNewestFirst(FALLBACK_DRAMAS);
     }
 
-    return rows.map((r, index) => {
+    const dramasList = rows.map((r, index) => {
       const idNum = parseInt(r.id || "", 10);
       const metaDesc =
         r.metadescription ||
@@ -309,10 +346,17 @@ export async function fetchGoogleSheetDramas(): Promise<DramaItem[]> {
         r.synopsis ||
         "";
 
+      const explicitSeries = r.series || r.seriesname || r.dramaname || r.show || r.parentseries;
+      const title = r.title || `Episode ${index + 1}`;
+      const seriesName = explicitSeries ? explicitSeries.trim() : extractSeriesName(title);
+      const seriesSlug = extractSeriesSlug(seriesName);
+
       return {
         id: !Number.isNaN(idNum) && idNum > 0 ? idNum : index + 1,
-        title: r.title || `Episode ${index + 1}`,
-        slug: r.slug || (r.title ? r.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") : `episode-${index + 1}`),
+        title,
+        slug: r.slug || (title ? title.toLowerCase().replace(/[^a-z0-9]+/g, "-") : `episode-${index + 1}`),
+        seriesName,
+        seriesSlug,
         category: r.category || "Pakistani Drama",
         youtubeUrl: r.youtubeurl || r.youtube || r.url || r.link || "",
         thumbnail: r.thumbnail || r.image || r.poster || "",
@@ -322,18 +366,20 @@ export async function fetchGoogleSheetDramas(): Promise<DramaItem[]> {
         date: r.date || new Date().toISOString(),
       };
     });
+
+    return sortNewestFirst(dramasList);
   } catch (error) {
     console.error("[Google Sheet] Error fetching or parsing Google Sheet CSV:", error);
-    return FALLBACK_DRAMAS;
+    return sortNewestFirst(FALLBACK_DRAMAS);
   }
 }
 
 /**
- * Returns all drama posts mapped to WordPressPost format.
+ * Returns all drama posts mapped to WordPressPost format, sorted newest first.
  */
 export async function getPosts(): Promise<WordPressPost[]> {
   const dramas = await fetchGoogleSheetDramas();
-  return dramas.map(mapDramaToPost);
+  return sortNewestFirst(dramas.map(mapDramaToPost));
 }
 
 export const getEpisodes = getPosts;
@@ -356,6 +402,7 @@ export function normalizeCategoryKey(cat: string): string {
 /**
  * Strictly filters dramas where the row's category matches the requested slug.
  * Does NOT fall back to general posts when there are 0 matches, ensuring categories never mix up.
+ * Returns posts sorted newest first.
  */
 export async function getCategoryPosts(categorySlug: string): Promise<WordPressPost[]> {
   const dramas = await fetchGoogleSheetDramas();
@@ -368,7 +415,7 @@ export async function getCategoryPosts(categorySlug: string): Promise<WordPressP
     return dramaKey === targetKey;
   });
 
-  return filtered.map(mapDramaToPost);
+  return sortNewestFirst(filtered.map(mapDramaToPost));
 }
 
 // Aliases for compatibility
@@ -464,30 +511,54 @@ export interface DramaSeries {
  * "Tere Bin - Ep 5" -> "Tere Bin"
  * "Queen of Tears — Episode 1" -> "Queen of Tears"
  */
+/**
+ * Extracts a series title from an episode title or item title string.
+ * Accurately cleans off:
+ * - Subtitle tags after dashes, pipes, colons: Official Teaser, OST, Episode, Story, Plot, etc.
+ * - Suffixes: Official OST, OST, Soundtrack, Title Song, Promo, Trailer, Clip, Episode \d*, Season \d*
+ * - Common industry descriptors: Urdu Drama, Pakistani Drama, Drama Serial, Drama, Serial
+ * - Broadcast networks: & SHAN TV, | Har Pal Geo, etc.
+ *
+ * Examples:
+ * "Nakhuda Urdu Drama - Official Teaser 1, Story, Telepathy Plot & SHAN TV" -> "Nakhuda"
+ * "Nakhuda Urdu Drama Official OST - Pakistani & Turkish Musical Fusion, Shan TV" -> "Nakhuda"
+ * "Nakhuda Urdu Drama Episode 1 - Malik Danish Story, Telepathy & Shan TV" -> "Nakhuda"
+ * "Atish — Episode 1" -> "Atish"
+ * "Kurulus Osman — Episode 1" -> "Kurulus Osman"
+ * "Anupamaa — Latest Episode" -> "Anupamaa"
+ * "Queen of Tears — Episode 1" -> "Queen of Tears"
+ * "Tere Bin - Official OST" -> "Tere Bin"
+ */
 export function extractSeriesName(rawTitle: string): string {
   if (!rawTitle) return "Drama";
-  let clean = rawTitle.trim();
-  clean = clean.replace(/<[^>]*>?/gm, "").replace(/&mdash;|&ndash;|&#8212;|&#8211;/g, "—");
+  let clean = rawTitle.trim().replace(/<[^>]*>?/gm, "").replace(/&mdash;|&ndash;|&#8212;|&#8211;/g, "—");
 
-  // Check for common separators followed by episode/season/part/number
-  const splitMatch = clean.split(/\s*(?:—|–|-|\||:)\s*(?:episode|ep|season|latest|part|\d)/i);
-  if (splitMatch.length > 1 && splitMatch[0].trim().length > 0) {
-    return splitMatch[0].trim();
+  // 1. First, strip trailing channel names or network tags after & or |
+  clean = clean.replace(
+    /\s*(?:&|\|)\s*(?:shan\s+tv|har\s+pal\s+geo|geo\s+tv|ary\s+digital|hum\s+tv|green\s+tv|express\s+tv|bol\s+entertainment|zee\s+tv|star\s+plus|colors\s+tv|netflix|sony\s+liv|zee5).*$/i,
+    ""
+  );
+
+  // 2. Remove subtitle clauses after dash/pipe/colon if they start with keywords
+  const parts = clean.split(
+    /\s*(?:—|–|-|\||:)\s*(?:official\s+)?(?:latest\s+)?(?:teaser|ost|soundtrack|title\s+song|song|promo|trailer|episode|ep\.?|season|part|story|plot|behind|pakistani|urdu|turkish|hindi|korean|\d)/i
+  );
+  if (parts.length > 1 && parts[0].trim().length > 0) {
+    clean = parts[0].trim();
   }
 
-  // Check pattern "Series Name Episode 1"
-  const epMatch = clean.match(/^(.*?)\s+(?:episode|ep\.?|season|part)\s*\d+/i);
-  if (epMatch && epMatch[1].trim().length > 0) {
-    return epMatch[1].trim();
-  }
+  // 3. Remove inline keywords like 'Official OST', 'OST', 'Teaser 1', 'Episode 1'
+  clean = clean.replace(/\s+(?:official\s+)?(?:ost|soundtrack|title\s+song|theme\s+song|music\s+video)\b.*$/i, "");
+  clean = clean.replace(/\s+(?:official\s+)?(?:teaser|promo|trailer|clip|preview|first\s+look)(?:\s*\d+)?\b.*$/i, "");
+  clean = clean.replace(/\s+(?:latest\s+)?(?:episode|ep\.?|part|season)(?:\s*\d+)?\b.*$/i, "");
 
-  // Check separator alone if title is "Drama Name - Subtitle"
-  const dashSplit = clean.split(/\s*(?:—|–|-|\|)\s*/);
-  if (dashSplit.length > 1 && dashSplit[0].trim().length > 0) {
-    return dashSplit[0].trim();
-  }
+  // 4. Strip generic industry tags like 'Urdu Drama', 'Pakistani Drama', 'Drama Serial', 'Drama', 'Serial'
+  clean = clean.replace(/\s+(?:urdu|pakistani|turkish|hindi|korean|indian)?\s*(?:drama\s+serial|drama|serial)\b.*$/i, "");
 
-  return clean;
+  // 5. Strip any trailing punctuation (dashes, colons, pipes, commas)
+  clean = clean.replace(/\s*(?:—|–|-|\||:|,)\s*$/, "").trim();
+
+  return clean || "Drama";
 }
 
 export function extractSeriesSlug(rawTitle: string): string {
@@ -502,15 +573,17 @@ export function extractSeriesSlug(rawTitle: string): string {
 
 /**
  * Groups all posts into unique drama series.
+ * Ensures all episodes within each series are strictly sorted newest first,
+ * and the series themselves are ordered by the most recently updated series first.
  */
 export async function getAllSeries(): Promise<DramaSeries[]> {
-  const posts = await getPosts();
+  const posts = await getPosts(); // Already sorted newest first
   const seriesMap = new Map<string, DramaSeries>();
 
   for (const post of posts) {
     const rawTitle = post.title?.rendered || "";
-    const seriesTitle = extractSeriesName(rawTitle);
-    const seriesSlug = extractSeriesSlug(rawTitle);
+    const seriesTitle = post.seriesName || extractSeriesName(rawTitle);
+    const seriesSlug = post.seriesSlug || extractSeriesSlug(seriesTitle);
 
     const catName = post.category || "General";
     const catSlug = catName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -550,7 +623,11 @@ export async function getAllSeries(): Promise<DramaSeries[]> {
     }
   }
 
-  return Array.from(seriesMap.values());
+  // Ensure every series has its episodes strictly sorted newest first
+  return Array.from(seriesMap.values()).map((s) => ({
+    ...s,
+    episodes: sortNewestFirst(s.episodes),
+  }));
 }
 
 /**
@@ -568,16 +645,40 @@ export async function getSeriesByCategory(categorySlug: string): Promise<DramaSe
 
 /**
  * Fetches a single drama series by its slug.
+ * Supports direct match and fallback lookup so no sub-links 404.
  */
 export async function getSeriesBySlug(seriesSlug: string): Promise<DramaSeries | null> {
   const all = await getAllSeries();
   const target = seriesSlug.trim().toLowerCase();
 
-  const found = all.find(
+  // 1. Direct match on series slug or formatted title
+  let found = all.find(
     (s) => s.slug.toLowerCase() === target || s.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") === target
   );
 
-  return found || null;
+  if (found) {
+    return {
+      ...found,
+      episodes: sortNewestFirst(found.episodes),
+    };
+  }
+
+  // 2. Fuzzy match or episode match (e.g., if user accessed via "nakhuda-urdu-drama-episode-1")
+  found = all.find(
+    (s) =>
+      target.startsWith(s.slug) ||
+      s.slug.startsWith(target) ||
+      s.episodes.some((ep) => ep.slug.toLowerCase() === target)
+  );
+
+  if (found) {
+    return {
+      ...found,
+      episodes: sortNewestFirst(found.episodes),
+    };
+  }
+
+  return null;
 }
 
 export interface CategoryDropdownItem {
